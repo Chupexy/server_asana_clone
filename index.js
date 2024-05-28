@@ -22,6 +22,7 @@ app.use(express.urlencoded({extended: true}))
 
 //routes
 app.use('/user_auth', require('./route_user/auth'));
+app.use('/user_profile', require('./route_user/profile'))
 
 
 app.listen(process.env.PORT, ()=>{

@@ -9,16 +9,14 @@ asignee: String,
 assigned_to: [String],
 project: String,
 description: String,
-subtask: [String],
 privacy: {type: String, default: 'private'}, // public, if you want other persons to access it
-is_completed: {type: Boolean, default: false},
+completion_status: {type: String, default: 'Not started'}, // not started, in progress, completed, on hold, cancelled, testing
 is_overdue: {type: Boolean, default: false},
-is_upcoming: {type: Boolean, default: true},
 timestamp: Number,
-likes: [String],
-likes_count: {type: Number, default: 0},
 priority: {type: String, default: ''}, // high, medium, low, only for tasks under a project
-in_project: {type: Boolean, default: false}
+in_project: {type: Boolean, default: false},
+comments: [String],
+comment_count: {type: String, default: 0}
 },{collection : 'tasks'})
 
 const model = mongoose.model('Task', taskSchema)
