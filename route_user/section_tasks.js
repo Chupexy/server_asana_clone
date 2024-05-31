@@ -7,17 +7,19 @@ dotenv.config()
 const Project = require('../models/project')
 const Task = require('../models/task')
 const Notification = require('../models/notification')
+const Section = require('../models/section')
 
 
-//create task inside project
+//create task inside section
 router.post('/create_task', async(req, res) =>{
-    const {token , task_name, project_id} = req.body
-    if(!token || !task_name || !project_id)
+    const {token , task_name, project_id, section_id} = req.body
+    if(!token || !task_name || !project_id  || !section_id)
         return res.status(400).send({status: 'error', msg:'All fields must be filled'})
 
     try {
         // get project
         const project = await Project.findOne({project_id}, {tasks: 1}).lean()
+        const section = await Section.findOne({section_id}, {tasks: 1}).lean()
 
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
@@ -32,12 +34,14 @@ router.post('/create_task', async(req, res) =>{
         task.description = ""
         task.timestamp = timestamp
         task.comments = []
-        task.section = ""
+        task.section = section_id
 
         await task.save()
 
         //update project document
         project = await Project.findByIdAndUpdate({project_id}, {$push: {tasks: task._id}},{new: true}).lean()
+        //update section document
+        section = await Section.findByIdAndUpdate({section_id}, {$push: {tasks: task._id}},{new: true}).lean()
 
          // send notification to user
       let notification = new Notification();
@@ -65,8 +69,8 @@ router.post('/create_task', async(req, res) =>{
 
 //endpoint to edit task
 router.post('/edit_task', async(req, res) =>{
-       const {token,task_name, due_date, description, task_id, project_id} = req.body
-    if(!token || !task_id || !project_id)
+       const {token,task_name, due_date, description, task_id, section_id} = req.body
+    if(!token || !task_id || !section_id)
         return res.status(400).send({status: 'error', msg:'All fields must be filled'})
 
     try {
@@ -74,11 +78,11 @@ router.post('/edit_task', async(req, res) =>{
         const user =jwt.verify(token, process.env.JWT_SECRET)
 
         //get task document
-        const task = await Task.findOne({task_id, project: project_id}, {task_name: 1, due_date: 1, description: 1}).lean()
+        const task = await Task.findOne({task_id, section: section_id}, {task_name: 1, due_date: 1, description: 1}).lean()
         if(!task)
             return res.status(200).send({status: 'ok', msg:'Task not found'})
 
-        task = await Task.findByIdAndUpdate({task_id, project: project_id}, {
+        task = await Task.findByIdAndUpdate({task_id, section: section_id}, {
             task_name: task_name || task.task_name,
             due_date: due_date || task.due_date,
             description: description || task.description
@@ -107,17 +111,17 @@ router.post('/edit_task', async(req, res) =>{
 
 //endpoint to view single task
 router.post('/view_task', async(req, res) =>{
-    const { token, task_id, project_id } = req.body;
+    const { token, task_id, section_id } = req.body;
 
-    if(!token || !task_id ||!project_id)
+    if(!token || !task_id ||!section_id)
         return res.status(400).send({status: 'error', msg:'All fields must be filled'});
 
     try {
         //verify token
          jwt.verify(token, process.env.JWT_SECRET)
 
-        //find product documeent
-        const task = await Task.findOne({task_id, project: project_id}).lean()
+        //find task documeent
+        const task = await Task.findOne({task_id, section: section_id}).lean()
 
         if(!task)
             return res.status(404).send({status: 'error', msg: 'Task not found'})
@@ -136,15 +140,15 @@ router.post('/view_task', async(req, res) =>{
 
 // endpoint to view tasks
 router.post('/view_tasks', async(req, res) =>{
-    const { token, project_id } = req.body;
+    const { token, section_id } = req.body;
 
-    if(!token || !project_id)
+    if(!token || !section_id)
         return res.status(400).send({status: 'error', msg:'All fields must be filled'});
 
     try {
         jwt.verify(token, process.env.JWT_SECRET)
 
-        const tasks = await Task.find({project:project_id }).lean()
+        const tasks = await Task.find({section: section_id }).lean()
         if(tasks.length == 0)
             return res.status(400).send({status:'error', msg:'No task at the moment'});
 
@@ -159,77 +163,10 @@ router.post('/view_tasks', async(req, res) =>{
     }
 })
 
-//set priority of task in project
-router.post('/set_priority', async (req,res) =>{
-    const {token,  priority, task_id} =req.body
-    if(!token || !priority ||!task_id)
-        return res.status(400).send({status: 'error', msg:'All fields must be filled'});
-
-    try {
-        //verify token
-        const user = jwt.verify(token, process.env.JWT_SECRET)
-
-        const task = await Project.tasks.findone({task_id}, {priority: 1}).lean()
-        if(!task)
-            return res.status(200).send({status: 'ok', msg: 'No project found'})
-
-        task = await Project.tasks.findOneAndUpdate({ task_id}, {priority: priority}).lean()
-
-        return res.status(200).send({status: 'ok', msg:'Priority Set successfully'})
-
-    } catch (e) {
-        console.log(e)
-        if(e.name === 'JsonWebTokenError'){
-            return res.status(401).send({status:'error', msg:'Token verification failed', error: e})
-        }
-       return res.status(500).send({status:'error', msg:'An error occured'}) 
-    }
-})
-
-//set completion status
-router.post('/set_completion_status', async (req, res) =>{
-    const {token, completion_status, task_id, project_id} = req.body
-    if(!token || !completion_status || !task_id || !project_id)
-        return res.status(400).send({status:'error', msg:'All fields must be filled'})
-
-    try {
-        //verify token
-        const user = jwt.verify(token, process.env.JWT_SECRET)
-
-        const project = await Project.findOne({project_id}, {user_id: 1}).lean()
-          const task = await Task.findOne({task_id}, { task_name: 1, completion_status: 1}).lean()
-
-          // check if you are project manager
-          if(project.user_id !== user._id)
-            return res.status(400).send({status:'error', msg:'Not project manager'})
-
-        task = await Task.findByIdAndUpdate({task_id}, {completion_status: completion_status}, {new: true}).lean()
-
-        // send notification to user
-      let notification = new Notification();
-      notification.event = `Task completion status updated: ${task.task_name}`;
-      notification.event_id = task_id;
-      notification.message = `Task is ${task.completion_status}`;
-      notification.timestamp = timestamp;
-      notification.receiver_id = user._id;
-      notification.sender_id = user._id;
-
-      await notification.save();
-
-        return res.status(200).send({status:'ok', msg:'Status updated'})
-        
-    } catch (e) {
-        console.log(e)
-        if(e.name === 'JsonWebTokenError'){
-            return res.status(401).send({status:'error', msg:'Token verification failed', error: e})
-        }
-       return res.status(500).send({status:'error', msg:'An error occured'})  
-    }
-})
-
 // delete task
 router.post('/delete_task', async(req, res) =>{
 
 })
 
-module.exports = router
+
+module.exports = router;

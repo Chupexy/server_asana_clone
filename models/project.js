@@ -10,7 +10,8 @@ project_description: String,
 is_completed: {type: Boolean, default: false},
 sections: [String],
 privacy_status: {type: String, default: 'Me'}, //Me or invited members
-timestamp: Number
+timestamp: Number,
+figma_link: String
 }, {collection: 'projects'})
 
 const model = mongoose.model('Project', projectSchema)

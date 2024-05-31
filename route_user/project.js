@@ -26,6 +26,7 @@ router.post('/create_project', async(req, res)=>{
         project.timestamp = timestamp 
         project.due_date = ""
         project.project_description = ""
+        project.figma_link = ""
         
         await project.save()
 
@@ -54,7 +55,7 @@ router.post('/create_project', async(req, res)=>{
 
 //edit project
 router.post('/edit_project', async(req,res) =>{
-    const {token, project_name, project_id, project_description , due_date} = req.body
+    const {token, project_name, project_id, project_description , due_date, figma_link} = req.body
     if(!token || !project_name || !project_id)
         return res.status(400).send({status: 'error', msg:'All fields must be filled'})
 
@@ -63,12 +64,13 @@ router.post('/edit_project', async(req,res) =>{
         jwt.verify(token, process.env/JWT_SECRET)
 
         //get project document
-        const project = await Project.findOne({project_id}, {project_name: 1, project_description: 1, due_date:1}).lean()
+        const project = await Project.findOne({project_id}, {project_name: 1, project_description: 1, due_date:1, figma_link: 1}).lean()
 
         project = await Project.findOneAndUpdate({project_id}, 
             {project_name: project_name,
              project_description: project_description,
-             due_date: due_date
+             due_date: due_date,
+             figma_link: figma_link
             }, {new: true}).lean()
 
         // send notification to user

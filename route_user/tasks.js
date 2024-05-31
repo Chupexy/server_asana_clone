@@ -26,6 +26,7 @@ router.post('/create_task', async(req, res) =>{
         task.description = ""
         task.timestamp = timestamp
         task.comments = []
+        task.section = ""
 
         await task.save()
 
