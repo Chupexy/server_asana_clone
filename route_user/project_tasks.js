@@ -17,7 +17,7 @@ router.post('/create_task', async(req, res) =>{
 
     try {
         // get project
-        const project = await Project.findOne({project_id}, {tasks: 1}).lean()
+        let project = await Project.findOne({_id: project_id}, {tasks: 1}).lean()
 
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
@@ -33,11 +33,12 @@ router.post('/create_task', async(req, res) =>{
         task.timestamp = timestamp
         task.comments = []
         task.section = ""
+        task.in_project = true
 
         await task.save()
 
         //update project document
-        project = await Project.findByIdAndUpdate({project_id}, {$push: {tasks: task._id}},{new: true}).lean()
+        project = await Project.findByIdAndUpdate({_id: project_id}, {$push: {tasks: task._id}},{new: true}).lean()
 
          // send notification to user
       let notification = new Notification();
@@ -72,13 +73,14 @@ router.post('/edit_task', async(req, res) =>{
     try {
         //verify token
         const user =jwt.verify(token, process.env.JWT_SECRET)
+        const timestamp = Date.now()
 
         //get task document
-        const task = await Task.findOne({task_id, project: project_id}, {task_name: 1, due_date: 1, description: 1}).lean()
+        let task = await Task.findOne({_id: task_id, project: project_id}, {task_name: 1, due_date: 1, description: 1}).lean()
         if(!task)
             return res.status(200).send({status: 'ok', msg:'Task not found'})
 
-        task = await Task.findByIdAndUpdate({task_id, project: project_id}, {
+        task = await Task.findByIdAndUpdate({_id: task_id, project: project_id}, {
             task_name: task_name || task.task_name,
             due_date: due_date || task.due_date,
             description: description || task.description
@@ -117,7 +119,7 @@ router.post('/view_task', async(req, res) =>{
          jwt.verify(token, process.env.JWT_SECRET)
 
         //find product documeent
-        const task = await Task.findOne({task_id, project: project_id}).lean()
+        const task = await Task.findOne({_id: task_id, project: project_id}).lean()
 
         if(!task)
             return res.status(404).send({status: 'error', msg: 'Task not found'})
@@ -167,13 +169,13 @@ router.post('/set_priority', async (req,res) =>{
 
     try {
         //verify token
-        const user = jwt.verify(token, process.env.JWT_SECRET)
+         jwt.verify(token, process.env.JWT_SECRET)
 
-        const task = await Project.tasks.findone({task_id}, {priority: 1}).lean()
+        let task = await Task.findOne({_id: task_id, in_project: true}, {priority: 1}).lean()
         if(!task)
-            return res.status(200).send({status: 'ok', msg: 'No project found'})
+            return res.status(200).send({status: 'ok', msg: 'No task found'})
 
-        task = await Project.tasks.findOneAndUpdate({ task_id}, {priority: priority}).lean()
+        task = await Task.findOneAndUpdate({_id: task_id, in_project: true}, {priority: priority}).lean()
 
         return res.status(200).send({status: 'ok', msg:'Priority Set successfully'})
 
@@ -195,15 +197,16 @@ router.post('/set_completion_status', async (req, res) =>{
     try {
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
+        const timestamp = Date.now()
 
-        const project = await Project.findOne({project_id}, {user_id: 1}).lean()
-          const task = await Task.findOne({task_id}, { task_name: 1, completion_status: 1}).lean()
+        const project = await Project.findOne({_id: project_id}, {user_id: 1}).lean()
+          let task = await Task.findOne({_id: task_id, in_project: true}, { task_name: 1, completion_status: 1}).lean()
 
           // check if you are project manager
           if(project.user_id !== user._id)
             return res.status(400).send({status:'error', msg:'Not project manager'})
 
-        task = await Task.findByIdAndUpdate({task_id}, {completion_status: completion_status}, {new: true}).lean()
+        task = await Task.findByIdAndUpdate({_id: task_id}, {completion_status: completion_status}, {new: true}).lean()
 
         // send notification to user
       let notification = new Notification();

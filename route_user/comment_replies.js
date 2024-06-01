@@ -142,3 +142,5 @@ router.post('/view_comment_replies', async(req, res) =>{
 router.post('/delete_comment', async(req, res) =>{
     
 })
+
+module.exports = router

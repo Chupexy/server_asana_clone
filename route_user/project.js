@@ -61,22 +61,24 @@ router.post('/edit_project', async(req,res) =>{
 
     try {
         //verify token 
-        jwt.verify(token, process.env/JWT_SECRET)
+        const user =jwt.verify(token, process.env.JWT_SECRET)
+        const timestamp = Date.now()
 
         //get project document
-        const project = await Project.findOne({project_id}, {project_name: 1, project_description: 1, due_date:1, figma_link: 1}).lean()
+        let project = await Project.findOne({_id: project_id}, {user_id: 1, project_name: 1, project_description: 1, due_date:1, figma_link: 1}).lean()
 
-        project = await Project.findOneAndUpdate({project_id}, 
+        project = await Project.findOneAndUpdate({_id: project_id}, 
             {project_name: project_name,
              project_description: project_description,
              due_date: due_date,
              figma_link: figma_link
             }, {new: true}).lean()
+           
 
         // send notification to user
       let notification = new Notification();
       notification.event = `Edited Project : ${project.project_name}`;
-      notification.event_id = project._id;
+      notification.event_id = project_id;
       notification.message = `Edit successful ${project.project_name}`;
       notification.timestamp = timestamp;
       notification.receiver_id = project.user_id;
@@ -127,7 +129,7 @@ router.post('/view_project', async(req, res) =>{
 })
 
 // endpoint to view projects
-router.post('/view_project', async(req, res) =>{
+router.post('/view_projects', async(req, res) =>{
     const { token } = req.body;
 
     if(!token)
@@ -162,9 +164,9 @@ router.post('/set_privacy', async (req,res) =>{
          jwt.verify(token, process.env.JWT_SECRET)
 
          //get task document
-         const project = await Project.findOne({project_id}, {privacy_status: 1}).lean()
+         let project = await Project.findOne({_id: project_id}, {privacy_status: 1}).lean()
 
-        project = await Project.findByIdAndUpdate({project_id}, {privacy_status: privacy_status})
+        project = await Project.findByIdAndUpdate({_id: project_id}, {privacy_status: privacy_status})
 
         return res.status(200).send({status:'ok', msg:'Privacy status updated'})
     } catch (e) {

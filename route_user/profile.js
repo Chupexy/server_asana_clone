@@ -11,7 +11,7 @@ dotenv.config()
 
 //Endpoint to edit profile
 router.post('/edit_profile', async(req,res)=>{
-    const {token, fullname, email, about_me, team, job_title} = req.body
+    const {token, fullname, email, about_me, department, job_title} = req.body
 
     //check if fields are passed
     if(!token)
@@ -22,7 +22,7 @@ router.post('/edit_profile', async(req,res)=>{
         const user = jwt.verify(token, process.env.JWT_SECRET)
 
         //get user document
-        let Muser = await User.findOne({_id: user._id}, {fullname: 1, email: 1, about_me: 1, job_title: 1, team: 1}).lean()
+        let Muser = await User.findOne({_id: user._id}, {fullname: 1, email: 1, about_me: 1, job_title: 1, department: 1}).lean()
 
         //update user document
         Muser = await User.findOneAndUpdate(
@@ -31,7 +31,7 @@ router.post('/edit_profile', async(req,res)=>{
                 email: email || Muser.email,
                 about_me: about_me || Muser.about_me,
                 job_title: job_title || Muser.job_title,
-                team: team || Muser.team
+                department :department || Muser.department
                 
         }, {new: true}
     ).lean()

@@ -23,7 +23,13 @@ app.use(express.urlencoded({extended: true}))
 //routes
 app.use('/user_auth', require('./route_user/auth'));
 app.use('/user_profile', require('./route_user/profile'))
-
+app.use('/user_tasks', require('./route_user/tasks'))
+app.use('/user_comment_replies', require('./route_user/comment_replies'))
+app.use('/user_comments', require('./route_user/comments'))
+app.use('/user_section', require('./route_user/section'))
+app.use('/user_section_task', require('./route_user/section_tasks'))
+app.use('/user_project', require('./route_user/project'))
+app.use('/user_project_task', require('./route_user/project_tasks'))
 
 app.listen(process.env.PORT, ()=>{
     console.log("Server is running on port 3000");

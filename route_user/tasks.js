@@ -54,11 +54,11 @@ router.post('/edit_task', async(req, res) =>{
         const user =jwt.verify(token, process.env.JWT_SECRET)
 
         //get task document
-        const task = await Task.findOne({task_id, user_id: user._id}, {task_name: 1, due_date: 1, description: 1}).lean()
+        let task = await Task.findOne({_id: task_id, user_id: user._id, in_project: false}, {task_name: 1, due_date: 1, description: 1}).lean()
         if(!task)
             return res.status(200).send({status: 'ok', msg:'Task not found'})
 
-        task = await Task.findByIdAndUpdate({task_id}, {
+        task = await Task.findByIdAndUpdate({_id:  task_id}, {
             task_name: task_name || task.task_name,
             due_date: due_date || task.due_date,
             description: description || task.description
@@ -85,8 +85,8 @@ router.post('/view_task', async(req, res) =>{
         //verify token
          jwt.verify(token, process.env.JWT_SECRET)
 
-        //find product documeent
-        const task = await Task.findOne({_id: task_id}).lean()
+        //find task documeent
+        const task = await Task.findOne({_id: task_id, in_project: false}).lean()
 
         if(!task)
             return res.status(404).send({status: 'error', msg: 'Task not found'})
@@ -111,9 +111,9 @@ router.post('/view_tasks', async(req, res) =>{
         return res.status(400).send({status: 'error', msg:'All fields must be filled'});
 
     try {
-        jwt.verify(token, process.env.JWT_SECRET)
+        const user = jwt.verify(token, process.env.JWT_SECRET)
 
-        const tasks = await Task.find({ }).lean()
+        const tasks = await Task.find({user_id: user._id, in_project: false }).lean()
         if(tasks.length == 0)
             return res.status(400).send({status:'error', msg:'No task at the moment'});
 
@@ -139,9 +139,9 @@ router.post('/set_privacy', async(req, res) =>{
         const user = jwt.verify(token, process.env.JWT_SECRET)
 
          //get task document
-         const task = await Task.findOne({task_id, user_id: user._id}, {privacy_status: 1}).lean()
+         let task = await Task.findOne({_id: task_id, user_id: user._id, in_project: false}, {privacy_status: 1}).lean()
 
-        task = await Task.findByIdAndUpdate({task_id, user_id: user._id}, {privacy_status: privacy_status})
+        task = await Task.findByIdAndUpdate({_id: task_id}, {privacy_status: privacy_status})
 
         return res.status(200).send({status:'ok', msg:'Privacy status updated'})
     } catch (e) {
@@ -163,12 +163,18 @@ router.post('/add_to_project', async(req, res) =>{
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
 
+        //check task document
+        await Task.findOne({_id: task_id, in_project: false})
+
         //get project document
-        const project = await Project.findOne({project_id, user_id: user._id}, {tasks: 1}).lean()
+        let project = await Project.findOne({_id: project_id, user_id: user._id}, {tasks: 1}).lean()
         if(!project)
             return res.status(200).send({status: 'ok', msg: 'No project found'})
 
-        project = await Project.findOneAndUpdate({project_id, user_id: user._id}, {$push: {tasks: task_id}}, {new: true}).lean()
+        project = await Project.findOneAndUpdate({_id: project_id, user_id: user._id}, {$push: {tasks: task_id}}, {new: true}).lean()
+
+        //update task document
+        await Task.findByIdAndUpdate({_id: task_id, in_project: false}, {in_project: true, project: project_id}, {new: true})
 
         return res.status(200).send({status: 'ok', msg: 'Add to project successful'})
         
