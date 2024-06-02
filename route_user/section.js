@@ -17,7 +17,7 @@ router.post('/create_section', async(req, res) =>{
 
     try {
         // get project
-        const project = await Project.findOne({project_id}, {user_id: 1, sections: 1}).lean()
+        let project = await Project.findOne({_id: project_id}, {user_id: 1, sections: 1}).lean()
 
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
@@ -34,7 +34,7 @@ router.post('/create_section', async(req, res) =>{
         await section.save()
 
         //update project document
-        project = await Project.findByIdAndUpdate({project_id}, {$push: {sections: section._id}},{new: true}).lean()
+        project = await Project.findByIdAndUpdate({_id: project_id}, {$push: {sections: section._id}},{new: true}).lean()
 
          // send notification to user
       let notification = new Notification();
@@ -69,13 +69,14 @@ router.post('/edit_section', async(req, res) =>{
     try {
         //verify token
         const user =jwt.verify(token, process.env.JWT_SECRET)
+        const timestamp = Date.now()
 
         //get section document
-        const section = await Section.findOne({section_id, project: project_id}, {section_name: 1}).lean()
+        let  section = await Section.findOne({_id: section_id, project: project_id}, {section_name: 1}).lean()
         if(!section)
             return res.status(200).send({status: 'ok', msg:'Section not found'})
 
-        section = await Section.findByIdAndUpdate({section_id, project: project_id}, {
+        section = await Section.findByIdAndUpdate({_id: section_id, project: project_id}, {
             section_name: section_name || section.section_name,
         }, {new: true}).lean()
 
@@ -112,7 +113,7 @@ router.post('/view_section', async(req, res) =>{
          jwt.verify(token, process.env.JWT_SECRET)
 
         //find section documeent
-        const section = await Section.findOne({section_id, project: project_id}).lean()
+        const section = await Section.findOne({_id: section_id, project: project_id}).lean()
 
         if(!section)
             return res.status(404).send({status: 'error', msg: 'Section not found'})

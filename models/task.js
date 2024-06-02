@@ -16,7 +16,7 @@ timestamp: Number,
 priority: {type: String, default: ''}, // high, medium, low, only for tasks under a project
 in_project: {type: Boolean, default: false},
 comments: [String],
-comment_count: {type: String, default: 0}
+comment_count: {type: Number, default: 0}
 },{collection : 'tasks'})
 
 const model = mongoose.model('Task', taskSchema)

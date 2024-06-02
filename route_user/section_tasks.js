@@ -18,8 +18,8 @@ router.post('/create_task', async(req, res) =>{
 
     try {
         // get project
-        const project = await Project.findOne({project_id}, {tasks: 1}).lean()
-        const section = await Section.findOne({section_id}, {tasks: 1}).lean()
+        let project = await Project.findOne({_id: project_id}, {tasks: 1}).lean()
+        let section = await Section.findOne({_id: section_id}, {tasks: 1}).lean()
 
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
@@ -35,13 +35,14 @@ router.post('/create_task', async(req, res) =>{
         task.timestamp = timestamp
         task.comments = []
         task.section = section_id
+        task.in_project = true
 
         await task.save()
 
         //update project document
-        project = await Project.findByIdAndUpdate({project_id}, {$push: {tasks: task._id}},{new: true}).lean()
+        project = await Project.findByIdAndUpdate({_id: project_id}, {$push: {tasks: task._id}},{new: true}).lean()
         //update section document
-        section = await Section.findByIdAndUpdate({section_id}, {$push: {tasks: task._id}},{new: true}).lean()
+        section = await Section.findByIdAndUpdate({_id: section_id}, {$push: {tasks: task._id}},{new: true}).lean()
 
          // send notification to user
       let notification = new Notification();
@@ -76,13 +77,14 @@ router.post('/edit_task', async(req, res) =>{
     try {
         //verify token
         const user =jwt.verify(token, process.env.JWT_SECRET)
+        const timestamp = Date.now()
 
         //get task document
-        const task = await Task.findOne({task_id, section: section_id}, {task_name: 1, due_date: 1, description: 1}).lean()
+        let task = await Task.findOne({_id: task_id, section: section_id}, {task_name: 1, due_date: 1, description: 1}).lean()
         if(!task)
             return res.status(200).send({status: 'ok', msg:'Task not found'})
 
-        task = await Task.findByIdAndUpdate({task_id, section: section_id}, {
+        task = await Task.findByIdAndUpdate({_id: task_id, section: section_id}, {
             task_name: task_name || task.task_name,
             due_date: due_date || task.due_date,
             description: description || task.description
@@ -121,7 +123,7 @@ router.post('/view_task', async(req, res) =>{
          jwt.verify(token, process.env.JWT_SECRET)
 
         //find task documeent
-        const task = await Task.findOne({task_id, section: section_id}).lean()
+        const task = await Task.findOne({_id: task_id, section: section_id}).lean()
 
         if(!task)
             return res.status(404).send({status: 'error', msg: 'Task not found'})

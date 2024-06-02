@@ -7,6 +7,8 @@ const commentSchema = new Schema({
     timestamp: Number,
     task: String,
     replyto_comment_id: String,
+    comment_replies: [String],
+    comment_reply_count: {type: Number, default: 0},
     owner_name: String,
     owner_img: String
 },{collection: 'comments'})

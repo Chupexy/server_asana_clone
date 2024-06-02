@@ -18,31 +18,32 @@ router.post('/task_comment', async(req, res) =>{
     try {
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
-        const task = await Task.findOne({task_id}, {user_id: 1}).lean()
+        const task = await Task.findOne({_id: task_id}, {user_id: 1, comments: 1, comment_count: 1}).lean()
         const timestamp = Date.now()
 
-        const comment = new Comment()
-        comment.owner_id = user._id
-        comment.task = task_id
-        comment.timestamp = timestamp
-        comment.replyto_comment_id = ""
-        comment.comment = comment
-        comment.owner_name = "",
-        comment.owner_img = ""
+        const Mcomment = new Comment()
+        Mcomment.owner_id = user._id
+        Mcomment.task = task_id
+        Mcomment.timestamp = timestamp
+        Mcomment.replyto_comment_id = ""
+        Mcomment.comment = comment
+        Mcomment.owner_name = ""
+        Mcomment.owner_img = ""
+        Mcomment.comment_replies = []
 
-        await comment.save()
+        await Mcomment.save()
 
         //update task document
-        await Task.findByIdAndUpdate(task_id, 
+        await Task.findOneAndUpdate({_id: task_id}, 
             {
-                $push: {comments: comment._id},
+                $push: {comments: Mcomment._id},
                  $inc: {comment_count: 1}
-                }, {new: true})
+                }, {new: true}).lean()
 
         // send notification to user
       let notification = new Notification();
       notification.event = `New Comment`;
-      notification.event_id = comment._id;
+      notification.event_id = Mcomment._id;
       notification.message = `Commented on task ${Task.task_id}`;
       notification.timestamp = timestamp;
       notification.receiver_id = task.user_id;
@@ -71,9 +72,9 @@ router.post('/edit_comment', async(req, res) =>{
     try {
         jwt.verify(token, process.env.JWT_SECRET)
 
-        const Mcomment = await Comment.findOne({comment_id}, {comment: 1}).lean()
+        let Mcomment = await Comment.findOne({_id: comment_id}, {comment: 1}).lean()
 
-        Mcomment = await Comment.findByIdAndUpdate({comment_id}, {
+        Mcomment = await Comment.findByIdAndUpdate({_id: comment_id}, {
             comment: comment || Mcomment.comment
         }, {new: true}).lean()
 
@@ -98,7 +99,7 @@ router.post('/view_comment', async(req, res) =>{
         
         jwt.verify(token, process.env.JWT_SECRET)
 
-        const comment = await Comment.findOne({comment_id})
+        const comment = await Comment.findOne({_id: comment_id})
         if(!comment)
             return res.status(200).send({status:'ok', msg:'Comment not found'})
         return res.status(200).send({status:'ok', msg:'Comment found', comment})
@@ -122,7 +123,7 @@ router.post('/view_comments', async(req, res) =>{
         jwt.verify(token, process.env.JWT_SECRET)
 
         //get comments in a task
-        const comments = await Comment.find({task_id}).lean()
+        const comments = await Comment.find({task: task_id}).lean()
         if(comments.length == 0)
             return res.status(200).send({status: 'ok', msg:'No comment found'})
 

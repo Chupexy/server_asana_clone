@@ -16,28 +16,38 @@ router.post('/comment_reply', async(req, res) =>{
         return res.status(400).send({status: 'error', msg:'All fields must be filled'})
 
     try {
+
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
-        const comment = await Comment.findOne({comment_id}, {comment_replies: 1, task: 1, user_id: 1}).lean()
+    
+        const Ncomment = await Comment.findOne({_id: comment_id}, {comment_replies: 1, task: 1, user_id: 1, comment_reply_count: 1}).lean()
         const timestamp = Date.now()
 
         const Mcomment = new Comment()
         Mcomment.owner_id = user._id
-        Mcomment.task = comment.task
+        Mcomment.task = Ncomment.task
         Mcomment.timestamp = timestamp
         Mcomment.replyto_comment_id = comment_id
         Mcomment.comment = comment
-        comment.owner_name = "",
-        comment.owner_img = ""
+        Mcomment.owner_name = "",
+        Mcomment.owner_img = ""
+        Mcomment.comment_replies = []
 
-        await comment.save()
+        await Mcomment.save()
 
-        //update comment document
-        await Comment.findByIdAndUpdate(comment_id, 
+        //update main comment document
+        await Comment.findByIdAndUpdate({_id: comment_id},
             {
                 $push: {comment_replies: Mcomment._id},
+                $inc: {comment_reply_count: 1}
+                }, {new: true}).lean()
+
+         //update task document
+        await Task.findOneAndUpdate({_id: Ncomment.task}, 
+            {
+                $push: {comments: Mcomment._id},
                  $inc: {comment_count: 1}
-                }, {new: true})
+                }, {new: true}).lean()
 
         // send notification to user
       let notification = new Notification();
@@ -45,7 +55,7 @@ router.post('/comment_reply', async(req, res) =>{
       notification.event_id = Mcomment._id;
       notification.message = `Replied to comment ${comment_id}`;
       notification.timestamp = timestamp;
-      notification.receiver_id = comment.user_id;
+      notification.receiver_id = Ncomment.user_id;
       notification.sender_id = user._id;
 
       await notification.save();
@@ -98,7 +108,7 @@ router.post('/view_comment', async(req, res) =>{
         
         jwt.verify(token, process.env.JWT_SECRET)
 
-        const comment = await Comment.findOne({comment_id})
+        const comment = await Comment.findOne({_id: comment_id})
         if(!comment)
             return res.status(200).send({status:'ok', msg:'Comment not found'})
         return res.status(200).send({status:'ok', msg:'Comment found', comment})

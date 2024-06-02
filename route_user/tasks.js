@@ -5,6 +5,7 @@ const dotenv = require('dotenv')
 dotenv.config()
 const Task = require('../models/task')
 const Project = require('../models/project')
+const User = require('../models/user')
 
 
 router.post('/create_task', async(req, res) =>{
@@ -29,6 +30,9 @@ router.post('/create_task', async(req, res) =>{
         task.section = ""
 
         await task.save()
+
+        //update user document
+        await User.findByIdAndUpdate({_id: user._id}, {$push: {mytasks: task._id}}, {new: true}).lean()
 
         return res.status(200).send({status: 'ok', msg:'Task created successful', task})
 
