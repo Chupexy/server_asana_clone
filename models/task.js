@@ -5,7 +5,7 @@ const taskSchema = new Schema({
 user_id: String,
 task_name: String,
 due_date: String, // ill confirm if its a string or number later
-assigned_to: [String],
+assigned_to: String,
 project: String,
 section: String,
 description: String,

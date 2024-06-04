@@ -30,6 +30,8 @@ app.use('/user_section', require('./route_user/section'))
 app.use('/user_section_task', require('./route_user/section_tasks'))
 app.use('/user_project', require('./route_user/project'))
 app.use('/user_project_task', require('./route_user/project_tasks'))
+app.use('/user_invitation', require('./route_user/invitation'))
+app.use('/user_assign_task', require('./route_user/assign_task'))
 
 app.listen(process.env.PORT, ()=>{
     console.log("Server is running on port 3000");

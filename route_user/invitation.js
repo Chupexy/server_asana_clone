@@ -18,13 +18,12 @@ router.post('/invite', async(req, res) =>{
         const timestamp = Date.now()
 
         //check if receiver exists
-        const collaborator =  await User.findOne({_id: receiver_id}).lean()
-        if(!collaborator)
+        const receiver =  await User.findOne({_id: receiver_id}, {fullname: 1, img_id: 1}).lean()
+        if(!receiver)
             return res.status(200).send({status: 'ok', msg:'No User found'})
 
         //get sender and receiver document
         const sender = await User.findOne({_id: sender_id}, {fullname: 1, img_id: 1}).lean()
-        const receiver = await User.findOne({_id: receiver_id}, {fullname: 1, img_id: 1}).lean()
 
         //send invitation
         const invitation = new Invitation()
@@ -135,6 +134,7 @@ router.post('/accept_invite', async(req, res) =>{
     try {
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
+        const timestamp = Date.now()
         //get invitation document
         let invitation = await Invitation.findOne({_id: invitation_id}).lean()
 
@@ -161,7 +161,7 @@ router.post('/accept_invite', async(req, res) =>{
 
       await Snotification.save();
 
-        return res.status(200).send({status: 'ok', msg:'Successful'})
+        return res.status(200).send({status: 'ok', msg:'Successful', invitation})
         
         
     } catch (e) {
@@ -182,6 +182,7 @@ router.post('/decline_invite', async(req, res) =>{
     try {
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
+        const timestamp = Date.now()
         //get invitation document
         let invitation = await Invitation.findOne({_id: invitation_id}).lean()
 
