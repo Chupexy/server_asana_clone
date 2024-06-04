@@ -167,6 +167,31 @@ router.post('/view_tasks', async(req, res) =>{
 
 // delete task
 router.post('/delete_task', async(req, res) =>{
+    const {token, task_id, project_id, section_id} = req.body
+    if(!token || !task_id || section_id || !project_id)
+        return res.status(400).send({status: 'error', msg:'All fields must be filled'})
+
+    try {
+        //verify token
+        const user = jwt.verify(token, process.env.JWT_SECRET)
+
+        //delete task from collection
+        await Task.findOneAndDelete({_id: task_id, section: section_id}, {new: true})
+
+        //update project document
+        await Project.findByIdAndUpdate({_id: project_id}, {$pull: {tasks: task_id}}, {new: true})
+
+             //update section document
+        await Section.findByIdAndUpdate({_id: section_id}, {$pull: {tasks: task_id}}, {new: true})
+        
+        return res.status(200).send({status: 'ok', msg: 'Successfully Deleted'})
+    } catch (e) {
+        console.log(e)
+        if(e.name === 'JsonWebTokenError'){
+            return res.status(401).send({status:'error', msg:'Token verification failed', error: e})
+        }
+        return res.status(500).send({status:'error', msg:'An error occured'})
+    }
 
 })
 

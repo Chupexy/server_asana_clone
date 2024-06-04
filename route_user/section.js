@@ -7,6 +7,7 @@ dotenv.config()
 const Project = require('../models/project')
 const Section = require('../models/section')
 const Notification = require('../models/notification')
+const Task = require('../models/task')
 
 
 //create section
@@ -155,8 +156,56 @@ router.post('/view_sections', async(req, res) =>{
     }
 })
 
-// Delete Section
+
+
+// delete section
+// delete_all_tasks takes either true or false
 router.post('/delete_section', async(req, res) =>{
+    const {token, section_id, delete_all_tasks, project_id} = req.body
+    if(!token || !section_id || !project_id)
+        return res.status(400).send({status: 'error', msg:'All fields must be filled'})
+
+    try {
+        //verify token
+        const user = jwt.verify(token, process.env.JWT_SECRET)
+        //const Ntasks = await Section.findOne({_id: section_id}, {tasks: 1}).lean()
+        //const timestamp = Date.now()
+
+        if(delete_all_tasks == true){
+         //delete section from collection
+        await Section.findOneAndDelete({_id: section_id, user_id: user._id}, {new: true})
+
+            //delete all tasks in the section
+        await Task.deleteMany({section: section_id}, {new: true})
+
+            //delete all tasks in the section from the project
+        //await Project.findOneAndUpdate({_id: project_id}, {$pull: {tasks: Ntasks}}).lean()
+
+        //update task documents
+        await Task.updateMany({section: section_id}, {section: ""}, {new: true})
+
+        //update project document
+        await Project.findByIdAndUpdate({_id: project_id}, {$pull: {sections: section_id}}, {new: true})
+        }
+
+            //delete section from collection
+           await Section.findOneAndDelete({_id: section_id, user_id: user._id}, {new: true})
+   
+           //update task documents
+           await Task.updateMany({section: section_id}, {section: ""}, {new: true})
+   
+           //update project document
+           await Project.findByIdAndUpdate({_id: project_id}, {$pull: {sections: section_id}}, {new: true})
+           
+
+        return res.status(200).send({status: 'ok', msg: 'Successfully Deleted'})
+    } catch (e) {
+        console.log(e)
+        if(e.name === 'JsonWebTokenError'){
+            return res.status(401).send({status:'error', msg:'Token verification failed', error: e})
+        }
+        return res.status(500).send({status:'error', msg:'An error occured'})
+    }
 
 })
 

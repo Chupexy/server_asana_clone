@@ -6,6 +6,7 @@ dotenv.config()
 
 const Comment = require('../models/comments')
 const Task = require('../models/task')
+const User = require('../models/user')
 const Notification = require('../models/notification')
 
 
@@ -18,6 +19,7 @@ router.post('/task_comment', async(req, res) =>{
     try {
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
+        const Muser = await User.findOne({_id: user._id}, {img_id: 1, fullname: 1})
         const task = await Task.findOne({_id: task_id}, {user_id: 1, comments: 1, comment_count: 1}).lean()
         const timestamp = Date.now()
 
@@ -27,8 +29,8 @@ router.post('/task_comment', async(req, res) =>{
         Mcomment.timestamp = timestamp
         Mcomment.replyto_comment_id = ""
         Mcomment.comment = comment
-        Mcomment.owner_name = ""
-        Mcomment.owner_img = ""
+        Mcomment.owner_name = Muser.fullname
+        Mcomment.owner_img = Muser.img_id
         Mcomment.comment_replies = []
 
         await Mcomment.save()
@@ -123,7 +125,7 @@ router.post('/view_comments', async(req, res) =>{
         jwt.verify(token, process.env.JWT_SECRET)
 
         //get comments in a task
-        const comments = await Comment.find({task: task_id}).lean()
+        const comments = await Comment.find({task: task_id, replyto_comment_id: ""}).lean()
         if(comments.length == 0)
             return res.status(200).send({status: 'ok', msg:'No comment found'})
 
@@ -141,6 +143,35 @@ router.post('/view_comments', async(req, res) =>{
 
 //Delete a comment 
 router.post('/delete_comment', async(req, res) =>{
+    const {token, comment_id, task_id} = req.body
+    if(!token || !comment_id || !task_id)
+        return res.status(400).send({status: 'error', msg: 'All fields must be filled'})
+
+    try {
+        //verify token
+        const user = jwt.verify(token, process.env.JWT_SECRET)
+
+        //delete comment document
+        await Comment.deleteOne({_id: comment_id, owner_id: user._id}, {new: true})
+        
+        //update task document
+        await Task.findByIdAndUpdate({_id: task_id},
+             {
+                $pull: {comments: comment_id},
+                $inc: {comment_count: -1}
+                     }, {new: true})
+
+        //delete all comments under the comment
+        await Comment.deleteMany({replyto_comment_id: comment_id},{new: true})
+
+        return res.status(200).send({status: 'ok', msg: 'Successfully deleted'})
+    } catch (e) {
+        console.log(e)
+        if(e.name == 'JsonWebTokenError')
+            return res.status(401).send({status: 'error', msg:'Token verification failed'})
+
+        return res.status(500).send({status:'error', msg:'An error occured'})
+    }
 
 })
 module.exports = router

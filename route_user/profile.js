@@ -5,12 +5,15 @@ const dotenv = require('dotenv')
 const bcrypt = require('bcryptjs')
 const {sendPasswordReset} = require("../utils/nodemailer");
 
+const cloudinary = require("../utils/cloudinary");
+const uploader = require("../utils/multer");
+
 
 const router = express.Router()
 dotenv.config()
 
 //Endpoint to edit profile
-router.post('/edit_profile', async(req,res)=>{
+router.post('/edit_profile', uploader.single("image"), async(req,res)=>{
     const {token, fullname, email, about_me, department, job_title} = req.body
 
     //check if fields are passed
@@ -22,7 +25,22 @@ router.post('/edit_profile', async(req,res)=>{
         const user = jwt.verify(token, process.env.JWT_SECRET)
 
         //get user document
-        let Muser = await User.findOne({_id: user._id}, {fullname: 1, email: 1, about_me: 1, job_title: 1, department: 1}).lean()
+        let Muser = await User.findOne({_id: user._id}, {fullname: 1, email: 1, about_me: 1, job_title: 1, department: 1, img_id: 1, img_url: 1}).lean()
+
+        let img_url = "", img_id = "";
+    // check if user updated profile image
+    if(req.file) {
+      // check if user has profile image and destroy it
+      if(Muser.img_url) {
+        await cloudinary.uploader.destroy(Muser.img_id);
+      }
+      // upload profile picture
+      const {secure_url, public_id} = await cloudinary.uploader.upload(req.file.path, {
+        folder: "user-images",
+      });
+      img_url = secure_url;
+      img_id = public_id;
+    }
 
         //update user document
         Muser = await User.findOneAndUpdate(
@@ -31,7 +49,9 @@ router.post('/edit_profile', async(req,res)=>{
                 email: email || Muser.email,
                 about_me: about_me || Muser.about_me,
                 job_title: job_title || Muser.job_title,
-                department :department || Muser.department
+                department :department || Muser.department,
+                img_id: img_id || Muser.img_id,
+                img_url: img_url || Muser.img_url
                 
         }, {new: true}
     ).lean()

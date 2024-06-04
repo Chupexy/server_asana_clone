@@ -6,6 +6,8 @@ dotenv.config()
 
 const Project = require('../models/project')
 const Notification = require('../models/notification')
+const User = require('../models/user')
+const Task = require('../models/task')
 
 //endpoint to create project
 router.post('/create_project', async(req, res)=>{
@@ -29,6 +31,9 @@ router.post('/create_project', async(req, res)=>{
         project.figma_link = ""
         
         await project.save()
+
+        //update user document
+        await User.updateOne({_id: user._id}, {$push: {projects: project._id}}, {new: true})
 
         // send notification to user
       let notification = new Notification();
@@ -181,8 +186,35 @@ router.post('/set_privacy', async (req,res) =>{
 
 // delete project
 router.post('/delete_project', async(req, res) =>{
+    const {token, project_id} = req.body
+    if(!token || !project_id)
+        return res.status(400).send({status: 'error', msg:'All fields must be filled'})
+
+    try {
+        //verify token
+        const user = jwt.verify(token, process.env.JWT_SECRET)
+        const timestamp = Date.now()
+
+        //delete project from collection
+        await Project.findOneAndDelete({_id: project_id, user_id: user._id}, {new: true})
+
+        //update user document
+        await User.findByIdAndUpdate({_id: user._id}, {$pull: {projects: project_id}}, {new: true})
+
+        //delete all tasks in the project
+        await Task.deleteMany({project: project_id}, {new: true})
+
+        return res.status(200).send({status: 'ok', msg: 'Successfully Deleted'})
+    } catch (e) {
+        console.log(e)
+        if(e.name === 'JsonWebTokenError'){
+            return res.status(401).send({status:'error', msg:'Token verification failed', error: e})
+        }
+        return res.status(500).send({status:'error', msg:'An error occured'})
+    }
 
 })
+
 
 
 module.exports = router

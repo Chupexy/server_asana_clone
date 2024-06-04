@@ -147,10 +147,47 @@ router.post('/view_comment_replies', async(req, res) =>{
     }
 })
 
-
+// where Mcomment_id is the main comment id
 //Delete a comment 
-router.post('/delete_comment', async(req, res) =>{
-    
+router.post('/delete_comment_reply', async(req, res) =>{
+    const {token, comment_id ,Mcomment_id, task_id} = req.body
+    if(!token || !comment_id || !task_id || !Mcomment_id)
+        return res.status(400).send({status: 'error', msg: 'All fields must be filled'})
+
+    try {
+        //verify token
+        const user = jwt.verify(token, process.env.JWT_SECRET)
+
+        //delete comment document
+        await Comment.deleteOne({_id: comment_id, owner_id: user._id}, {new: true})
+        
+        //update task document
+        await Task.findByIdAndUpdate({_id: task_id},
+             {
+                $pull: {comments: comment_id},
+                $inc: {comment_count: -1}
+                     }, {new: true})
+
+        //delete all comments under the comment
+        await Comment.deleteMany({replyto_comment_id: comment_id},{new: true})
+
+        //update comment document
+        await Comment.findByIdAndUpdate({_id: Mcomment_id},
+            {
+                $pull: {comment_replies: comment_id},
+                $inc: {comment_reply_count: -1}
+            }, {new: true})
+
+        return res.status(200).send({status: 'ok', msg: 'Successfully deleted'})
+        
+    } catch (e) {
+        console.log(e)
+        if(e.name == 'JsonWebTokenError')
+            return res.status(401).send({status: 'error', msg:'Token verification failed'})
+
+        return res.status(500).send({status:'error', msg:'An error occured'})
+    }
+
 })
 
 module.exports = router

@@ -7,10 +7,8 @@ const userSchema = new Schema({
     password: String,
     mytasks: [String],
     no_of_tasks_completed: {type: String, default: 0},
-    //collaborators: [String], // persons you invite
-    //invited_by: [String],// invited by{id of the person who invited} and date
-    //is_invited: {type: Boolean, default: false},
-    //invitation_accepted: Boolean,
+    collaborators: [String], // persons you invite
+    invited_by: [String],// invited by{id of the person who invited} and date
     projects: [String],
     job_title: String,
     department: String,

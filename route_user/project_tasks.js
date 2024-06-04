@@ -7,6 +7,8 @@ dotenv.config()
 const Project = require('../models/project')
 const Task = require('../models/task')
 const Notification = require('../models/notification')
+const Section = require('../models/section')
+const Comment = require('../models/comments')
 
 
 //create task inside project
@@ -16,8 +18,6 @@ router.post('/create_task', async(req, res) =>{
         return res.status(400).send({status: 'error', msg:'All fields must be filled'})
 
     try {
-        // get project
-        let project = await Project.findOne({_id: project_id}, {tasks: 1}).lean()
 
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
@@ -38,7 +38,7 @@ router.post('/create_task', async(req, res) =>{
         await task.save()
 
         //update project document
-        project = await Project.findByIdAndUpdate({_id: project_id}, {$push: {tasks: task._id}},{new: true}).lean()
+        await Project.findByIdAndUpdate({_id: project_id}, {$push: {tasks: task._id}},{new: true}).lean()
 
          // send notification to user
       let notification = new Notification();
@@ -232,6 +232,37 @@ router.post('/set_completion_status', async (req, res) =>{
 
 // delete task
 router.post('/delete_task', async(req, res) =>{
+    const {token, task_id, project_id, section_id} = req.body
+    if(!token || !task_id || !project_id)
+        return res.status(400).send({status: 'error', msg:'All fields must be filled'})
+
+    try {
+        //verify token
+        const user = jwt.verify(token, process.env.JWT_SECRET)
+
+        //delete task from collection
+        await Task.findOneAndDelete({_id: task_id, project: project_id}, {new: true})
+
+        //update project document
+        await Project.findByIdAndUpdate({_id: project_id}, {$pull: {tasks: task_id}}, {new: true})
+
+        if(section_id){
+             //update section document
+        await Section.findByIdAndUpdate({_id: section_id}, {$pull: {tasks: task_id}}, {new: true})
+        }
+        
+        //delete comments
+        await Comment.deleteMany({task: task_id}, {new: true})
+           
+
+        return res.status(200).send({status: 'ok', msg: 'Successfully Deleted'})
+    } catch (e) {
+        console.log(e)
+        if(e.name === 'JsonWebTokenError'){
+            return res.status(401).send({status:'error', msg:'Token verification failed', error: e})
+        }
+        return res.status(500).send({status:'error', msg:'An error occured'})
+    }
 
 })
 
