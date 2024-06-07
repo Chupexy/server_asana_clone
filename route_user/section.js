@@ -143,7 +143,7 @@ router.post('/view_sections', async (req, res) => {
 
         const sections = await Section.find({ project: project_id }).lean()
         if (sections.length == 0)
-            return res.status(400).send({ status: 'error', msg: 'No task at the moment' });
+            return res.status(400).send({ status: 'error', msg: 'No Section at the moment' });
 
         return res.status(200).send({ status: 'ok', msg: 'Sections found', sections, count: sections.length })
     } catch (e) {
@@ -169,6 +169,7 @@ router.post('/delete_section', async (req, res) => {
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
         const Ntasks = await Section.findOne({_id: section_id}, {tasks: 1}).lean()
+        console.log(Ntasks)
         //const timestamp = Date.now()
 
         if (delete_all_tasks == true) {
@@ -178,14 +179,12 @@ router.post('/delete_section', async (req, res) => {
             //delete all tasks in the section
             await Task.deleteMany({ section: section_id }, { new: true })
 
-            //delete all tasks in the section from the project
-            await Project.findOneAndUpdate({ _id: project_id }, { $pull: { tasks: [...Ntasks] } }).lean()
-
-            //update task documents
-            await Task.updateMany({ section: section_id }, { section: "" }, { new: true })
-
             //update project document
             await Project.findByIdAndUpdate({ _id: project_id }, { $pull: { sections: section_id } }, { new: true })
+
+            //delete all tasks in the section from the project
+            await Project.findOneAndUpdate({ _id: project_id }, { $pull: { tasks: [...Ntasks.tasks] } }).lean()
+
         } else {
             //delete section from collection
             await Section.findOneAndDelete({ _id: section_id, user_id: user._id }, { new: true })
