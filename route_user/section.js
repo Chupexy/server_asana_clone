@@ -179,10 +179,14 @@ router.post('/delete_section', async (req, res) => {
             //delete all tasks in the section
             await Task.deleteMany({ section: section_id }, { new: true })
 
-            // //update project document
-            // await Project.findByIdAndUpdate({ _id: project_id }, { $pull: { sections: section_id } }, { new: true });
+            //update project document
+            await Project.findByIdAndUpdate({ _id: project_id }, { $pull: { sections: section_id } }, { new: true });
 
-            await Project.updateMany({tasks: {$in: Ntasks.tasks}}, {$pull: {tasks: Ntasks.tasks}});
+            if(Ntasks.tasks.length !== 0) {
+                for(let i = 0; i < Ntasks.tasks.length; i++) {
+                    await Project.updateOne({tasks: {$in: Ntasks.tasks[i]}}, {$pull: {tasks: Ntasks.tasks[i]}});
+                }
+            }
 
             //delete all tasks in the section from the project
             await Project.findOneAndUpdate({ _id: project_id }, { $pull: { tasks: [...Ntasks.tasks] } }).lean()
