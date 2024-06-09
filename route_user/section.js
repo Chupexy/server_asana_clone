@@ -169,37 +169,34 @@ router.post('/delete_section', async (req, res) => {
         //verify token
         const user = jwt.verify(token, process.env.JWT_SECRET)
         const Ntasks = await Section.findOne({_id: section_id}, {tasks: 1}).lean()
-        console.log(Ntasks)
         //const timestamp = Date.now()
 
         if (delete_all_tasks == true) {
             //delete section from collection
-            await Section.findOneAndDelete({ _id: section_id, user_id: user._id }, { new: true })
+            await Section.findOneAndDelete({ _id: section_id, user_id: user._id })
 
             //delete all tasks in the section
             await Task.deleteMany({ section: section_id }, { new: true })
 
             //update project document
-            await Project.findByIdAndUpdate({ _id: project_id }, { $pull: { sections: section_id } }, { new: true });
+            await Project.findByIdAndUpdate({ _id: project_id }, { $pull: { sections: section_id }});
 
+            //delete all tasks in the section from the project
             if(Ntasks.tasks.length !== 0) {
                 for(let i = 0; i < Ntasks.tasks.length; i++) {
                     await Project.updateOne({tasks: {$in: Ntasks.tasks[i]}}, {$pull: {tasks: Ntasks.tasks[i]}});
                 }
             }
 
-            //delete all tasks in the section from the project
-            await Project.findOneAndUpdate({ _id: project_id }, { $pull: { tasks: [...Ntasks.tasks] } }).lean()
-
         } else {
             //delete section from collection
-            await Section.findOneAndDelete({ _id: section_id, user_id: user._id }, { new: true })
+            await Section.findOneAndDelete({ _id: section_id, user_id: user._id })
     
             //update task documents
-            await Task.updateMany({ section: section_id }, { section: "" }, { new: true })
+            await Task.updateMany({ section: section_id }, { section: "" })
     
             //update project document
-            await Project.findByIdAndUpdate({ _id: project_id }, { $pull: { sections: section_id } }, { new: true })   
+            await Project.findByIdAndUpdate({ _id: project_id }, { $pull: { sections: section_id } })   
 
         }
 
